@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { toothlessJump, toothlessCelebrate } from '../utils/animations';
@@ -31,69 +32,73 @@ const Toothless: React.FC<ToothlessProps> = ({ className }) => {
     
     blinkAnimation();
     
-    // Follow cursor with slight delay
-    let mouseX = 0;
-    let mouseY = 0;
-    let posX = window.innerWidth - 100; // Start at bottom right
-    let posY = window.innerHeight - 100;
+    // Set initial position to bottom right
+    let posX = window.innerWidth - 150;
+    let posY = window.innerHeight - 150;
     
-    const handleMouseMove = (e: MouseEvent) => {
-      // Get mouse position
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-    };
+    // Apply initial position
+    gsap.set(toothless, {
+      x: posX,
+      y: posY
+    });
     
-    window.addEventListener('mousemove', handleMouseMove);
-    
-    // Animation loop to create smooth following with GSAP
-    const updatePosition = () => {
+    // Random movement function
+    const flyToRandomPosition = () => {
       if (!toothless) return;
       
-      // Calculate new position with easing
-      posX += (mouseX - posX) * 0.05;
-      posY += (mouseY - posY) * 0.05;
+      // Calculate random position within viewport
+      const maxX = window.innerWidth - 150;
+      const maxY = window.innerHeight - 150;
       
-      // Apply transform while keeping Toothless within viewport bounds
-      const maxX = window.innerWidth - 100;
-      const maxY = window.innerHeight - 100;
+      const randomX = Math.random() * maxX;
+      const randomY = Math.random() * maxY;
       
-      const boundedX = Math.max(50, Math.min(maxX, posX));
-      const boundedY = Math.max(50, Math.min(maxY, posY));
+      // Random rotation for flying effect
+      const randomRotation = Math.random() * 20 - 10;
       
+      // Animate Toothless to new position
       gsap.to(toothless, {
-        x: boundedX - toothless.clientWidth / 2,
-        y: boundedY - toothless.clientHeight / 2,
-        duration: 0.5,
-        ease: "power2.out",
-        overwrite: "auto"
+        x: randomX,
+        y: randomY,
+        rotation: randomRotation,
+        duration: 1.5 + Math.random(),
+        ease: "power2.inOut",
+        onComplete: () => {
+          // Reset rotation after flying
+          gsap.to(toothless, {
+            rotation: 0,
+            duration: 0.5,
+            ease: "elastic.out(1, 0.5)"
+          });
+        }
       });
-      
-      // Look at cursor - eyes follow cursor even when body doesn't move much
-      if (eyes) {
-        const toothlessRect = toothless.getBoundingClientRect();
-        const toothlessCenterX = toothlessRect.left + toothlessRect.width / 2;
-        const toothlessCenterY = toothlessRect.top + toothlessRect.height / 2;
-        
-        // Calculate the angle between Toothless and the cursor
-        const angle = Math.atan2(mouseY - toothlessCenterY, mouseX - toothlessCenterX);
-        
-        // Convert radians to degrees
-        const degrees = angle * (180 / Math.PI);
-        
-        // Limit the rotation to a reasonable range
-        const limitedRotation = Math.max(-15, Math.min(15, degrees / 10));
-        
-        gsap.to(eyes, {
-          x: limitedRotation * 0.5,
-          y: limitedRotation * 0.5,
-          duration: 0.3,
-          overwrite: "auto"
-        });
+    };
+    
+    // Scroll event handler
+    const handleScroll = () => {
+      flyToRandomPosition();
+    };
+    
+    // Throttle scroll event to prevent too many animations
+    let scrollTimeout: number | null = null;
+    const throttledScroll = () => {
+      if (scrollTimeout === null) {
+        scrollTimeout = window.setTimeout(() => {
+          handleScroll();
+          scrollTimeout = null;
+        }, 300);
       }
     };
     
-    // Create GSAP ticker to handle smooth animation
-    const ticker = gsap.ticker.add(updatePosition);
+    // Add scroll listener
+    window.addEventListener('scroll', throttledScroll);
+    
+    // Occasionally fly around even without scrolling
+    const randomFlyInterval = setInterval(() => {
+      if (Math.random() > 0.7) { // 30% chance to fly randomly
+        flyToRandomPosition();
+      }
+    }, 10000); // Check every 10 seconds
     
     // Add click interaction
     const handleDocumentClick = (e: MouseEvent) => {
@@ -119,17 +124,26 @@ const Toothless: React.FC<ToothlessProps> = ({ className }) => {
     
     // Handle window resize to keep Toothless in bounds
     const handleResize = () => {
-      posX = Math.min(posX, window.innerWidth - 100);
-      posY = Math.min(posY, window.innerHeight - 100);
+      const maxX = window.innerWidth - 150;
+      const maxY = window.innerHeight - 150;
+      
+      // If currently outside bounds, fly to a random position inside bounds
+      if (posX > maxX || posY > maxY) {
+        flyToRandomPosition();
+      }
     };
     
     window.addEventListener('resize', handleResize);
     
+    // Initial random flight after a short delay
+    setTimeout(flyToRandomPosition, 2000);
+    
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('scroll', throttledScroll);
       window.removeEventListener('click', handleDocumentClick);
       window.removeEventListener('resize', handleResize);
-      gsap.ticker.remove(ticker);
+      clearInterval(randomFlyInterval);
+      if (scrollTimeout) window.clearTimeout(scrollTimeout);
     };
   }, []);
   
