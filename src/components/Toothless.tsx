@@ -1,7 +1,6 @@
-
 import React, { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
-import { toothlessJump, toothlessCelebrate } from '../utils/animations';
+import { toothlessJump, toothlessCelebrate } from '../utils/toothlessAnimations';
 
 interface ToothlessProps {
   className?: string;
