@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
+import { toothlessJump, toothlessCelebrate } from '../utils/animations';
 
 interface ToothlessProps {
   className?: string;
@@ -33,8 +34,8 @@ const Toothless: React.FC<ToothlessProps> = ({ className }) => {
     // Follow cursor with slight delay
     let mouseX = 0;
     let mouseY = 0;
-    let posX = 0;
-    let posY = 0;
+    let posX = window.innerWidth - 100; // Start at bottom right
+    let posY = window.innerHeight - 100;
     
     const handleMouseMove = (e: MouseEvent) => {
       // Get mouse position
@@ -44,8 +45,10 @@ const Toothless: React.FC<ToothlessProps> = ({ className }) => {
     
     window.addEventListener('mousemove', handleMouseMove);
     
-    // Animation loop to create smooth following
+    // Animation loop to create smooth following with GSAP
     const updatePosition = () => {
+      if (!toothless) return;
+      
       // Calculate new position with easing
       posX += (mouseX - posX) * 0.05;
       posY += (mouseY - posY) * 0.05;
@@ -57,9 +60,12 @@ const Toothless: React.FC<ToothlessProps> = ({ className }) => {
       const boundedX = Math.max(50, Math.min(maxX, posX));
       const boundedY = Math.max(50, Math.min(maxY, posY));
       
-      gsap.set(toothless, {
-        x: boundedX - 50,
-        y: boundedY - 50,
+      gsap.to(toothless, {
+        x: boundedX - toothless.clientWidth / 2,
+        y: boundedY - toothless.clientHeight / 2,
+        duration: 0.5,
+        ease: "power2.out",
+        overwrite: "auto"
       });
       
       // Look at cursor - eyes follow cursor even when body doesn't move much
@@ -80,30 +86,70 @@ const Toothless: React.FC<ToothlessProps> = ({ className }) => {
         gsap.to(eyes, {
           x: limitedRotation * 0.5,
           y: limitedRotation * 0.5,
-          duration: 0.3
+          duration: 0.3,
+          overwrite: "auto"
         });
       }
-      
-      // Continue animation loop
-      requestAnimationFrame(updatePosition);
     };
     
-    updatePosition();
+    // Create GSAP ticker to handle smooth animation
+    const ticker = gsap.ticker.add(updatePosition);
+    
+    // Add click interaction
+    const handleDocumentClick = (e: MouseEvent) => {
+      // Calculate distance from click to Toothless
+      if (!toothless) return;
+      
+      const rect = toothless.getBoundingClientRect();
+      const toothlessCenterX = rect.left + rect.width / 2;
+      const toothlessCenterY = rect.top + rect.height / 2;
+      
+      const distance = Math.sqrt(
+        Math.pow(e.clientX - toothlessCenterX, 2) + 
+        Math.pow(e.clientY - toothlessCenterY, 2)
+      );
+      
+      // If click is close to Toothless, trigger celebration animation
+      if (distance < 100) {
+        toothlessCelebrate(toothless);
+      }
+    };
+    
+    document.addEventListener('click', handleDocumentClick);
+    
+    // Handle window resize to keep Toothless in bounds
+    const handleResize = () => {
+      posX = Math.min(posX, window.innerWidth - 100);
+      posY = Math.min(posY, window.innerHeight - 100);
+    };
+    
+    window.addEventListener('resize', handleResize);
     
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('click', handleDocumentClick);
+      window.removeEventListener('resize', handleResize);
+      gsap.ticker.remove(ticker);
     };
   }, []);
+  
+  // Jump animation on hover
+  const handleHover = () => {
+    if (toothlessRef.current) {
+      toothlessJump(toothlessRef.current);
+    }
+  };
   
   return (
     <div 
       ref={toothlessRef}
-      className="fixed w-24 h-24 z-50 pointer-events-none"
+      className="fixed w-24 h-24 z-50 cursor-pointer"
       style={{ 
         bottom: 20, 
         right: 20,
         transform: 'translate(0, 0)' 
       }}
+      onMouseEnter={handleHover}
     >
       {/* Toothless body */}
       <div className="relative w-full h-full">
